@@ -19,12 +19,13 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_BINARY_DIR})
 # find_package(vulkan REQUIRED)
 find_package(glm REQUIRED)
 find_package(glfw REQUIRED)
+find_package(fmt REQUIRED)
 
 add_subdirectory(3rd_party)
 
 add_executable(hello src/main.cpp)
 
-target_link_libraries(hello vulkan glm::glm glfw::glfw)
+target_link_libraries(hello vulkan glm::glm glfw::glfw fmt::fmt)
 
 set_target_properties(hello PROPERTIES
             CXX_STANDARD 17)

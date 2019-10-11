@@ -1,6 +1,7 @@
 [requires] 
 glm/0.9.9.5@g-truc/stable
 glfw/3.3@bincrafters/stable
+fmt/5.3.0@bincrafters/stable
 
 [generators] 
 cmake_find_package
