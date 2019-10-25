@@ -27,5 +27,10 @@ add_executable(hello src/main.cpp)
 
 target_link_libraries(hello vulkan glm::glm glfw::glfw fmt::fmt)
 
+target_include_directories(hello 
+  PUBLIC
+    ${CMAKE_SOURCE_DIR}/include
+)
+
 set_target_properties(hello PROPERTIES
             CXX_STANDARD 17)
