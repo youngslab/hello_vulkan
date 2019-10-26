@@ -4,12 +4,18 @@
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
+#include <optional>
 
 #include "vkx.hpp"
 #include <fmt/format.h>
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
+
+struct QueueFamilyIndices {
+  std::optional<uint32_t> graphicsFamily;
+  bool isComplete() { return graphicsFamily.has_value(); }
+};
 
 class HelloTriangleApplication {
 public:
@@ -22,9 +28,9 @@ public:
 
 private:
   GLFWwindow *window;
-
   VkInstance instance;
   VkDebugUtilsMessengerEXT debugMessenger;
+  VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 
   void initWindow() {
     fmt::print("[STATUS] Init window\n");
@@ -47,13 +53,46 @@ private:
     pickPhysicalDevice();
   }
 
-  void mainLoop() {
-    while (!glfwWindowShouldClose(window)) {
-      glfwPollEvents();
+  void pickPhysicalDevice() {
+    auto ds = vkx::get_pysical_devices(this->instance);
+    for (const auto &d : ds) {
+      if (isDeviceSuitable(d)) {
+        this->physicalDevice = d;
+        break;
+      }
+    }
+
+    if (this->physicalDevice == VK_NULL_HANDLE) {
+      throw std::runtime_error("failed to find a suitable GPU!");
     }
   }
 
-  void pickPhysicalDevice() {}
+  bool isDeviceSuitable(VkPhysicalDevice device) {
+    QueueFamilyIndices indices = findQueueFamilies(device);
+
+    return indices.isComplete();
+  }
+
+  QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
+    QueueFamilyIndices indices;
+
+    auto ps = vkx::get_queue_family_properties(device);
+
+    int i = 0;
+    for (const auto &p : ps) {
+      if (p.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+        indices.graphicsFamily = i;
+      }
+
+      if (indices.isComplete()) {
+        break;
+      }
+
+      i++;
+    }
+
+    return indices;
+  }
 
   void setupDebugMessenger() {
     auto create_info = vkx::create_debug_utils_messager_create_info_ext(
@@ -156,6 +195,11 @@ private:
                 void *pUserData) {
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
     return VK_FALSE;
+  }
+  void mainLoop() {
+    while (!glfwWindowShouldClose(window)) {
+      glfwPollEvents();
+    }
   }
 };
 

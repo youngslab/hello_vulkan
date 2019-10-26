@@ -175,4 +175,19 @@ auto get_pysical_devices(VkInstance const &i) -> std::vector<VkPhysicalDevice> {
   return ds;
 }
 
+// queue properties
+auto get_queue_family_property_count(VkPhysicalDevice const &d) -> uint32_t {
+  uint32_t cnt;
+  vkGetPhysicalDeviceQueueFamilyProperties(d, &cnt, nullptr);
+  return cnt;
+}
+
+auto get_queue_family_properties(VkPhysicalDevice const &d)
+    -> std::vector<VkQueueFamilyProperties> {
+  auto cnt = get_queue_family_property_count(d);
+  std::vector<VkQueueFamilyProperties> fs(cnt);
+  vkGetPhysicalDeviceQueueFamilyProperties(d, &cnt, fs.data());
+  return fs;
+}
+
 } // namespace vkx
