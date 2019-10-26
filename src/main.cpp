@@ -43,12 +43,17 @@ private:
     fmt::print("[STATUS] Init vulkan\n");
     createInstance();
     setupDebugMessenger();
+    // 3. pick pysical device
+    pickPhysicalDevice();
   }
+
   void mainLoop() {
     while (!glfwWindowShouldClose(window)) {
       glfwPollEvents();
     }
   }
+
+  void pickPhysicalDevice() {}
 
   void setupDebugMessenger() {
     auto create_info = vkx::create_debug_utils_messager_create_info_ext(

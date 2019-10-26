@@ -160,4 +160,19 @@ auto create_instance_create_info(
   return info;
 }
 
+/* pysical device */
+
+auto get_pysical_device_count(VkInstance const &i) -> uint32_t {
+  uint32_t cnt = 0;
+  vkEnumeratePhysicalDevices(i, &cnt, nullptr);
+  return cnt;
+}
+
+auto get_pysical_devices(VkInstance const &i) -> std::vector<VkPhysicalDevice> {
+  uint32_t cnt = get_pysical_device_count(i);
+  std::vector<VkPhysicalDevice> ds(cnt);
+  vkEnumeratePhysicalDevices(i, &cnt, ds.data());
+  return ds;
+}
+
 } // namespace vkx
