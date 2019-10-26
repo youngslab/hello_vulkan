@@ -27,6 +27,7 @@ private:
   VkDebugUtilsMessengerEXT debugMessenger;
 
   void initWindow() {
+    fmt::print("[STATUS] Init window\n");
     glfwInit();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -38,7 +39,11 @@ private:
     }
   }
 
-  void initVulkan() { createInstance(); }
+  void initVulkan() {
+    fmt::print("[STATUS] Init vulkan\n");
+    createInstance();
+    setupDebugMessenger();
+  }
   void mainLoop() {
     while (!glfwWindowShouldClose(window)) {
       glfwPollEvents();
@@ -46,39 +51,22 @@ private:
   }
 
   void setupDebugMessenger() {
-    VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    createInfo.messageSeverity =
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                             VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                             VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-    createInfo.pfnUserCallback = debugCallback;
-    createInfo.pUserData = nullptr; // Optiona
+    auto create_info = vkx::create_debug_utils_messager_create_info_ext(
+        debugCallback, nullptr);
 
-    if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr,
-                                     &debugMessenger) != VK_SUCCESS) {
-      throw std::runtime_error("failed to set up debug messenger!");
-    }
-  }
+    auto success = vkx::create_debug_util_messanger_ext(
+        this->instance, &create_info, nullptr, &this->debugMessenger);
 
-  VkResult CreateDebugUtilsMessengerEXT(
-      VkInstance instance,
-      const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
-      const VkAllocationCallbacks *pAllocator,
-      VkDebugUtilsMessengerEXT *pDebugMessenger) {
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
-        instance, "vkCreateDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-      return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-    } else {
-      return VK_ERROR_EXTENSION_NOT_PRESENT;
+    if (success != VK_SUCCESS) {
+      fmt::print("[WARNING] failed to setup debug util messenger.\n");
     }
   }
 
   void cleanup() {
+    fmt::print("[STATUS] Cleanup\n");
+    vkx::destroy_debug_util_messanger_ext(this->instance, this->debugMessenger,
+                                          nullptr);
+
     vkDestroyInstance(instance, nullptr);
 
     glfwDestroyWindow(window);
@@ -106,32 +94,51 @@ private:
     return exts;
   }
 
+  void showExtensions() {
+    auto extensions = this->create_extensions();
+    fmt::print("supported extensions. {} \n",
+               vkx::to_string(vkx::get_extension_properties()));
+    fmt::print("required extensions.  {} \n", vkx::to_string(extensions));
+  }
+
+  void showLayers() {
+    auto layers = this->create_layers();
+    fmt::print("supported extensions. {} \n",
+               vkx::to_string(vkx::get_layer_properties()));
+    fmt::print("required extensions.  {} \n", vkx::to_string(layers));
+  }
+
   void createInstance() {
 
+    // check extensions
     auto layers = this->create_layers();
-    auto extensions = this->create_extensions();
-
     auto enabled_layer = vkx::is_available_layers(layers);
-    auto enabled_extensions = vkx::is_available_extensions(extensions);
-
     if (!enabled_layer) {
       fmt::print("[WARNING] layers not found.\n");
-      fmt::print("supported layers. {} \n",
-                 vkx::to_string(vkx::get_layer_properties()));
-      fmt::print("required layers.  {}\n", vkx::to_string(layers));
+      showExtensions();
       layers.clear();
     }
 
+    // check layers
+    auto extensions = this->create_extensions();
+    auto enabled_extensions = vkx::is_available_extensions(extensions);
     if (!enabled_extensions) {
       fmt::print("[WARNING] extensions not found.\n");
-      fmt::print("supported extensions. {} \n",
-                 vkx::to_string(vkx::get_extension_properties()));
-      fmt::print("required extensions.  {} \n", vkx::to_string(extensions));
+      showLayers();
       extensions.clear();
     }
 
-    auto appname = "hello vulkan";
-    this->instance = vkx::create_instance(appname, extensions, layers);
+    // validation layer - to debug instances.
+    auto messenger = vkx::create_debug_utils_messager_create_info_ext(
+        debugCallback, nullptr);
+
+    auto application_info = vkx::create_application_info("hello vulkan");
+
+    auto instance_create_info = vkx::create_instance_create_info(
+        application_info, extensions, layers, &messenger);
+
+    this->instance = vkx::create_instance(instance_create_info);
+
     if (!this->instance) {
       fmt::print("[ERROR] error to create instace");
     }
@@ -142,9 +149,7 @@ private:
                 VkDebugUtilsMessageTypeFlagsEXT messageType,
                 const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
                 void *pUserData) {
-
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-
     return VK_FALSE;
   }
 };

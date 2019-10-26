@@ -117,41 +117,47 @@ auto is_available_layers(const std::vector<Str> &layers) -> bool {
 }
 
 /* Create instance. */
-template <typename Str>
-auto create_instance(const char *appname, const std::vector<Str> &extensions,
-                     const std::vector<Str> &layers) -> VkInstance {
-  VkApplicationInfo appInfo = {};
-  appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-  appInfo.pApplicationName = appname;
-  appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-  appInfo.pEngineName = "No Engine";
-  appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-  appInfo.apiVersion = VK_API_VERSION_1_0;
-
-  VkInstanceCreateInfo createInfo = {};
-  createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-  createInfo.pApplicationInfo = &appInfo;
-
-  // no extensions.
-  createInfo.enabledExtensionCount = extensions.size();
-  createInfo.ppEnabledExtensionNames = extensions.data();
-
-  // no validation layer
-  createInfo.enabledLayerCount = layers.size();
-  createInfo.ppEnabledLayerNames = layers.data();
-
+auto create_instance(VkInstanceCreateInfo const &info) -> VkInstance {
   VkInstance instance;
-  auto success = vkCreateInstance(&createInfo, nullptr, &instance);
+  auto success = vkCreateInstance(&info, nullptr, &instance);
   if (success != VK_SUCCESS) {
     return nullptr;
   }
   return instance;
 }
 
-/* Create instance without extensions and layers*/
-auto create_instance(const char *appname) -> VkInstance {
-  return create_instance(appname, std::vector<const char *>{},
-                         std::vector<const char *>{});
+auto create_application_info(char const *name) -> VkApplicationInfo {
+  VkApplicationInfo info = {};
+  info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+  info.pApplicationName = name;
+  info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+  info.pEngineName = "No Engine";
+  info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+  info.apiVersion = VK_API_VERSION_1_0;
+  return info;
+}
+
+auto create_instance_create_info(
+    VkApplicationInfo const &app_info,
+    std::vector<char const *> const &extensions,
+    std::vector<char const *> const &layers,
+    VkDebugUtilsMessengerCreateInfoEXT const *messeger = nullptr)
+    -> VkInstanceCreateInfo {
+
+  VkInstanceCreateInfo info = {};
+  info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+
+  info.pApplicationInfo = &app_info;
+
+  info.enabledExtensionCount = extensions.size();
+  info.ppEnabledExtensionNames = extensions.data();
+
+  info.enabledLayerCount = layers.size();
+  info.ppEnabledLayerNames = layers.data();
+
+  info.pNext = messeger;
+
+  return info;
 }
 
 } // namespace vkx

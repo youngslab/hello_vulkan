@@ -1,7 +1,4 @@
-
-
 namespace vkx {
-namespace ext {
 namespace detail {
 
 template <typename T> auto get_function(VkInstance i) -> T;
@@ -23,8 +20,8 @@ auto get_function<PFN_vkDestroyDebugUtilsMessengerEXT>(VkInstance i)
 }
 
 template <typename T, typename... Ts,
-          typename Ret = std::result_of_t<T(VkInstance, Ts...)>>
-auto apply(VkInstance i, Ts... ts)
+          typename Ret = std::result_of_t<T(VkInstance const, Ts...)>>
+auto apply(VkInstance const i, Ts... ts)
     -> std::enable_if_t<!std::is_same_v<Ret, void>, Ret> {
   auto func = get_function<T>(i);
   if (!func) {
@@ -34,27 +31,43 @@ auto apply(VkInstance i, Ts... ts)
 }
 
 template <typename T, typename... Ts,
-          typename Ret = std::result_of_t<T(VkInstance, Ts...)>>
-auto apply(VkInstance i, Ts... ts)
+          typename Ret = std::result_of_t<T(VkInstance const, Ts...)>>
+auto apply(VkInstance const i, Ts... ts)
     -> std::enable_if_t<std::is_same_v<Ret, void>, Ret> {
   auto func = get_function<T>(i);
   func(i, ts...);
 }
 } // namespace detail
 auto create_debug_util_messanger_ext(
-    VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
-    const VkAllocationCallbacks *pAllocator,
+    VkInstance const &instance,
+    VkDebugUtilsMessengerCreateInfoEXT const *pCreateInfo,
+    VkAllocationCallbacks const *pAllocator,
     VkDebugUtilsMessengerEXT *pDebugMessenger) -> VkResult {
   return detail::apply<PFN_vkCreateDebugUtilsMessengerEXT>(
       instance, pCreateInfo, pAllocator, pDebugMessenger);
 }
 
-auto destroy_debug_util_messanger_ext(VkInstance instance,
+auto destroy_debug_util_messanger_ext(VkInstance const instance,
                                       VkDebugUtilsMessengerEXT debugMessenger,
-                                      const VkAllocationCallbacks *pAllocator)
+                                      VkAllocationCallbacks const *pAllocator)
     -> void {
   detail::apply<PFN_vkDestroyDebugUtilsMessengerEXT>(instance, debugMessenger,
                                                      pAllocator);
 }
-} // namespace ext
+
+auto create_debug_utils_messager_create_info_ext(
+    PFN_vkDebugUtilsMessengerCallbackEXT callback, void *user_data)
+    -> VkDebugUtilsMessengerCreateInfoEXT {
+  VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
+  createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+  createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                               VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                               VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+  createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                           VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                           VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+  createInfo.pfnUserCallback = callback;
+  createInfo.pUserData = user_data; // Optiona
+  return createInfo;
+}
 } // namespace vkx
