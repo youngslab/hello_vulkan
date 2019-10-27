@@ -6,6 +6,13 @@
 
 namespace vkx {
 
+template <typename T> auto destroy(T &t) -> void;
+
+template <> auto destroy<VkDevice>(VkDevice &d) -> void {
+  // default allocator.
+  vkDestroyDevice(d, nullptr);
+}
+
 auto to_string(const VkExtensionProperties &p) -> std::string {
   return p.extensionName;
 }
@@ -188,6 +195,50 @@ auto get_queue_family_properties(VkPhysicalDevice const &d)
   std::vector<VkQueueFamilyProperties> fs(cnt);
   vkGetPhysicalDeviceQueueFamilyProperties(d, &cnt, fs.data());
   return fs;
+}
+
+auto create_device_queue_create_info(uint32_t const idx, uint32_t const cnt,
+                                     float const priority)
+    -> VkDeviceQueueCreateInfo {
+  VkDeviceQueueCreateInfo info = {};
+  info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+  info.queueFamilyIndex = idx;
+  info.queueCount = cnt;
+  info.pQueuePriorities = &priority;
+  return info;
+}
+
+auto create_device_queue_create_info(uint32_t const idx)
+    -> VkDeviceQueueCreateInfo {
+  return create_device_queue_create_info(idx, 1, 1.0f);
+}
+
+auto create_device_create_info(
+    std::vector<VkDeviceQueueCreateInfo> const &queues,
+    VkPhysicalDeviceFeatures const &features) -> VkDeviceCreateInfo {
+  VkDeviceCreateInfo info = {};
+  info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+
+  info.pQueueCreateInfos = queues.data();
+  info.queueCreateInfoCount = queues.size();
+
+  info.pEnabledFeatures = &features;
+
+  // TODO: support validation layers.
+  return info;
+}
+
+auto create_device(VkPhysicalDevice const &p, VkDeviceCreateInfo const &info)
+    -> VkDevice {
+  VkDevice d;
+  vkCreateDevice(p, &info, nullptr, &d);
+  return d;
+}
+
+auto get_device_queue(VkDevice &d, uint32_t family_index, uint32_t idx) {
+  VkQueue q;
+  vkGetDeviceQueue(d, family_index, idx, &q);
+  return q;
 }
 
 } // namespace vkx

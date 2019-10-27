@@ -32,6 +32,10 @@ private:
   VkDebugUtilsMessengerEXT debugMessenger;
   VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 
+  // logical devices
+  VkDevice device;
+  VkQueue graphicsQueue;
+
   void initWindow() {
     fmt::print("[STATUS] Init window\n");
     glfwInit();
@@ -51,6 +55,7 @@ private:
     setupDebugMessenger();
     // 3. pick pysical device
     pickPhysicalDevice();
+    createLogicalDevice();
   }
 
   void pickPhysicalDevice() {
@@ -65,6 +70,30 @@ private:
     if (this->physicalDevice == VK_NULL_HANDLE) {
       throw std::runtime_error("failed to find a suitable GPU!");
     }
+  }
+
+  void createLogicalDevice() {
+
+    // queues.
+    QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+
+    auto graphics_queue_familiy_index = indices.graphicsFamily.value();
+
+    auto graphics_queue_create_info = vkx::create_device_queue_create_info(
+        graphics_queue_familiy_index, 1, 1.0f);
+
+    std::vector<VkDeviceQueueCreateInfo> queues = {graphics_queue_create_info};
+
+    // features.
+    VkPhysicalDeviceFeatures features{};
+
+    // device
+    auto device_create_info = vkx::create_device_create_info(queues, features);
+    this->device = vkx::create_device(this->physicalDevice, device_create_info);
+
+    // queue
+    this->graphicsQueue =
+        vkx::get_device_queue(this->device, graphics_queue_familiy_index, 0);
   }
 
   bool isDeviceSuitable(VkPhysicalDevice device) {
@@ -108,6 +137,9 @@ private:
 
   void cleanup() {
     fmt::print("[STATUS] Cleanup\n");
+
+    vkx::destroy(this->device);
+
     vkx::destroy_debug_util_messanger_ext(this->instance, this->debugMessenger,
                                           nullptr);
 
