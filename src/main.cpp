@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <cstdlib>
 #include <optional>
+#include <set>
 
 #include "vkx.hpp"
 #include <fmt/format.h>
@@ -14,7 +15,10 @@ const int HEIGHT = 600;
 
 struct QueueFamilyIndices {
   std::optional<uint32_t> graphicsFamily;
-  bool isComplete() { return graphicsFamily.has_value(); }
+  std::optional<uint32_t> presentFamily;
+  bool isComplete() {
+    return graphicsFamily.has_value() && presentFamily.has_value();
+  }
 };
 
 class HelloTriangleApplication {
@@ -29,12 +33,14 @@ public:
 private:
   GLFWwindow *window;
   VkInstance instance;
+  VkSurfaceKHR surface;
   VkDebugUtilsMessengerEXT debugMessenger;
   VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 
   // logical devices
   VkDevice device;
   VkQueue graphicsQueue;
+  VkQueue presentQueue;
 
   void initWindow() {
     fmt::print("[STATUS] Init window\n");
@@ -53,9 +59,17 @@ private:
     fmt::print("[STATUS] Init vulkan\n");
     createInstance();
     setupDebugMessenger();
+    createSurface();
     // 3. pick pysical device
     pickPhysicalDevice();
     createLogicalDevice();
+  }
+
+  void createSurface() {
+    if (glfwCreateWindowSurface(this->instance, this->window, nullptr,
+                                &this->surface) != VK_SUCCESS) {
+      throw std::runtime_error("failed to create window surface!");
+    }
   }
 
   void pickPhysicalDevice() {
@@ -77,23 +91,29 @@ private:
     // queues.
     QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
-    auto graphics_queue_familiy_index = indices.graphicsFamily.value();
+    // could be the same index for graphic and presentation.
+    auto queue_indices = std::set<uint32_t>{indices.graphicsFamily.value(),
+                                            indices.presentFamily.value()};
 
-    auto graphics_queue_create_info = vkx::create_device_queue_create_info(
-        graphics_queue_familiy_index, 1, 1.0f);
-
-    std::vector<VkDeviceQueueCreateInfo> queues = {graphics_queue_create_info};
+    std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
+    for (auto &idx : queue_indices) {
+      auto &&info = vkx::create_device_queue_create_info(idx, 1, 1.0f);
+      queue_create_infos.push_back(info);
+    }
 
     // features.
     VkPhysicalDeviceFeatures features{};
 
     // device
-    auto device_create_info = vkx::create_device_create_info(queues, features);
+    auto device_create_info =
+        vkx::create_device_create_info(queue_create_infos, features);
     this->device = vkx::create_device(this->physicalDevice, device_create_info);
 
     // queue
     this->graphicsQueue =
-        vkx::get_device_queue(this->device, graphics_queue_familiy_index, 0);
+        vkx::get_device_queue(this->device, indices.graphicsFamily.value(), 0);
+    this->presentQueue =
+        vkx::get_device_queue(this->device, indices.presentFamily.value(), 0);
   }
 
   bool isDeviceSuitable(VkPhysicalDevice device) {
@@ -111,6 +131,13 @@ private:
     for (const auto &p : ps) {
       if (p.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
         indices.graphicsFamily = i;
+      }
+
+      VkBool32 presentSupport = false;
+      vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+
+      if (presentSupport) {
+        indices.presentFamily = i;
       }
 
       if (indices.isComplete()) {
@@ -137,6 +164,8 @@ private:
 
   void cleanup() {
     fmt::print("[STATUS] Cleanup\n");
+
+    vkx::destroy(this->instance, this->surface);
 
     vkx::destroy(this->device);
 
@@ -189,6 +218,7 @@ private:
     // check extensions
     auto layers = this->create_layers();
     auto enabled_layer = vkx::is_available_layers(layers);
+
     if (!enabled_layer) {
       fmt::print("[WARNING] layers not found.\n");
       showExtensions();

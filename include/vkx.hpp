@@ -13,6 +13,14 @@ template <> auto destroy<VkDevice>(VkDevice &d) -> void {
   vkDestroyDevice(d, nullptr);
 }
 
+template <typename T> auto destroy(VkInstance const &i, T const &t) -> void;
+
+template <>
+auto destroy<VkSurfaceKHR>(VkInstance const &i, VkSurfaceKHR const &s) -> void {
+  // default allocator
+  vkDestroySurfaceKHR(i, s, nullptr);
+}
+
 auto to_string(const VkExtensionProperties &p) -> std::string {
   return p.extensionName;
 }
@@ -239,6 +247,31 @@ auto get_device_queue(VkDevice &d, uint32_t family_index, uint32_t idx) {
   VkQueue q;
   vkGetDeviceQueue(d, family_index, idx, &q);
   return q;
+}
+
+auto support_graphics_queue(VkQueueFamilyProperties const &p) -> bool {
+  return p.queueFlags & VK_QUEUE_GRAPHICS_BIT;
+}
+
+auto support_present_queue(VkDevice const &d, uint32_t idx,
+                           VkSurfaceKHR const &s) -> bool {
+  VkBool32 support = false;
+  vkGetPhysicalDeviceSurfaceSupportKHR(d, idx, s, &support);
+  return support;
+}
+
+// deault actions.
+auto find_queue_family_indice(
+    std::vector<VkQueueFamilyProperties> const &ps,
+    std::function<bool(uint32_t index, VkQueueFamilyProperties const &)>
+        predicate) -> std::vector<uint32_t> {
+  auto indices = std::vector<uint32_t>{};
+  for (auto i = 0u; i < ps.size(); i++) {
+    if (predicate(i, ps[i])) {
+      indices.push_back(i);
+    }
+  }
+  return indices;
 }
 
 } // namespace vkx
