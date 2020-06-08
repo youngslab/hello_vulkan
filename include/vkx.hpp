@@ -1,6 +1,7 @@
 #include <fmt/format.h>
 #include <vector>
 #include <sstream>
+#include <functional>
 
 #include "vkx_ext.hpp"
 
@@ -253,12 +254,12 @@ auto support_graphics_queue(VkQueueFamilyProperties const &p) -> bool {
   return p.queueFlags & VK_QUEUE_GRAPHICS_BIT;
 }
 
-auto support_present_queue(VkDevice const &d, uint32_t idx,
-                           VkSurfaceKHR const &s) -> bool {
-  VkBool32 support = false;
-  vkGetPhysicalDeviceSurfaceSupportKHR(d, idx, s, &support);
-  return support;
-}
+//auto support_present_queue(VkDevice const &d, uint32_t idx,
+                           //VkSurfaceKHR const &s) -> bool {
+  //VkBool32 support = false;
+  //vkGetPhysicalDeviceSurfaceSupportKHR(d, idx, s, &support);
+  //return support;
+//}
 
 // deault actions.
 auto find_queue_family_indice(
